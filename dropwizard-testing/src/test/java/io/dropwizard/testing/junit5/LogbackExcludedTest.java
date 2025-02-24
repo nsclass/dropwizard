@@ -14,8 +14,7 @@ import java.security.CodeSource;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Verify that Logback can be excluded from the classpath without generating any noise.
@@ -41,24 +40,22 @@ class LogbackExcludedTest {
     }
 
     @Test
-    void testPropagatedException() throws Exception {
+    void testPropagatedException() {
         AtomicReference<RuntimeException> thrown = new AtomicReference<>();
-        try {
-            testBuildConfigurationMetadata(className -> {
-                if (className.startsWith("ch.qos.logback.")) {
-                    thrown.set(new RuntimeException("Some unexpected error"));
-                    throw thrown.get();
-                }
-            });
-            fail("Expected exception to propagate out of ConfigurationMetadata");
-        } catch (InvocationTargetException e) {
-            assertThat(e.getCause()).isSameAs(thrown.get());
-        }
+        assertThatExceptionOfType(InvocationTargetException.class)
+            .isThrownBy(() ->
+                testBuildConfigurationMetadata(className -> {
+                    if (className.startsWith("ch.qos.logback.")) {
+                        thrown.set(new RuntimeException("Some unexpected error"));
+                        throw thrown.get();
+                    }
+                }))
+            .withCause(thrown.get());
     }
 
     public void testBuildConfigurationMetadata(CheckedConsumer<String> classFilter) throws Exception {
         try (ByteArrayOutputStream byteStream = captureStderr();
-                CustomClassLoader loader = new CustomClassLoader(classFilter)) {
+             CustomClassLoader loader = new CustomClassLoader(classFilter)) {
             // create class objects from custom loader
             Class<ConfigurationMetadata> cmType = loader.reloadClass(ConfigurationMetadata.class);
             Class<ObjectMapper> omType = loader.reloadClass(ObjectMapper.class);
@@ -68,7 +65,7 @@ class LogbackExcludedTest {
             cmType.getConstructor(omType, Class.class).newInstance(omType.newInstance(), confType);
 
             // make sure nothing is emitted to stderr; previously the absence of Logback in the classpath would cause
-            // "class io.dropwizard.configuration.ConfigurationMetadata$1: Type ch.qos.logback.access.spi.IAccessEvent
+            // "class io.dropwizard.configuration.ConfigurationMetadata$1: Type ch.qos.logback.access.common.spi.IAccessEvent
             // not present" to be emitted to stderr
             String err = byteStream.toString();
             assertThat(err).isEmpty();

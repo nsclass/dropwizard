@@ -67,6 +67,7 @@ registerDefaultExceptionMappers     true                                        
 enableThreadNameFilter              true                                             Whether or not to apply the ``ThreadNameFilter`` that adjusts thread names to include the request method and request URI.
 dumpAfterStart                      false                                            Whether or not to dump `Jetty Diagnostics`_ after start.
 dumpBeforeStop                      false                                            Whether or not to dump `Jetty Diagnostics`_ before stop.
+enableVirtualThreads                false                                            Whether to enable virtual threads for Jetty's thread pool.
 =================================== ===============================================  =============================================================================
 
 .. _Jetty Diagnostics: https://www.eclipse.org/jetty/documentation/9.4.x/jetty-dump-tool.html
@@ -92,7 +93,7 @@ GZip
 +---------------------------+---------------------+------------------------------------------------------------------------------------------------------+
 | minimumEntitySize         | 256 bytes           | All response entities under this size are not compressed.                                            |
 +---------------------------+---------------------+------------------------------------------------------------------------------------------------------+
-| bufferSize                | 8KiB                | The size of the buffer to use when compressing.                                                      |
+| bufferSize                | 8KiB                | The size of the buffer to use when decompressing.                                                    |
 +---------------------------+---------------------+------------------------------------------------------------------------------------------------------+
 | excludedUserAgentPatterns | []                  | The set of user agent patterns to exclude from compression.                                          |
 +---------------------------+---------------------+------------------------------------------------------------------------------------------------------+
@@ -242,6 +243,7 @@ Extends the attributes that are available to :ref:`all servers <man-configuratio
     server:
       adminMinThreads: 1
       adminMaxThreads: 64
+      enableAdminVirtualThreads: false
       adminContextPath: /
       applicationContextPath: /
       applicationConnectors:
@@ -262,19 +264,20 @@ Extends the attributes that are available to :ref:`all servers <man-configuratio
           validateCerts: false
 
 
-========================  =======================   =====================================================================
-Name                      Default                   Description
-========================  =======================   =====================================================================
-applicationConnectors     An `HTTP connector`_      A set of :ref:`connectors <man-configuration-connectors>` which will
-                          listening on port 8080.   handle application requests.
-adminConnectors           An `HTTP connector`_      An `HTTP connector`_ listening on port 8081.
-                          listening on port 8081.   A set of :ref:`connectors <man-configuration-connectors>` which will
-                                                    handle admin requests.
-adminMinThreads           1                         The minimum number of threads to use for admin requests.
-adminMaxThreads           64                        The maximum number of threads to use for admin requests.
-adminContextPath          /                         The context path of the admin servlets, including metrics and tasks.
-applicationContextPath    /                         The context path of the application servlets, including Jersey.
-========================  =======================   =====================================================================
+=========================  =======================   =====================================================================
+Name                       Default                   Description
+=========================  =======================   =====================================================================
+applicationConnectors      An `HTTP connector`_      A set of :ref:`connectors <man-configuration-connectors>` which will
+                           listening on port 8080.   handle application requests.
+adminConnectors            An `HTTP connector`_      An `HTTP connector`_ listening on port 8081.
+                           listening on port 8081.   A set of :ref:`connectors <man-configuration-connectors>` which will
+                                                     handle admin requests.
+adminMinThreads            1                         The minimum number of threads to use for admin requests.
+adminMaxThreads            64                        The maximum number of threads to use for admin requests.
+enableAdminVirtualThreads  false                     Whether to use virtual threads for the admin connectors.
+adminContextPath           /                         The context path of the admin servlets, including metrics and tasks.
+applicationContextPath     /                         The context path of the application servlets, including Jersey.
+=========================  =======================   =====================================================================
 
 .. _`HTTP connector`:  https://github.com/dropwizard/dropwizard/blob/master/dropwizard-jetty/src/main/java/io/dropwizard/jetty/HttpConnectorFactory.java
 
@@ -318,6 +321,7 @@ HTTP
           useForwardedHeaders: false
           useProxyProtocol: false
           httpCompliance: RFC7230
+          uriCompliance: DEFAULT
 
 
 ======================== ==================  ======================================================================================
@@ -373,6 +377,16 @@ httpCompliance           RFC7230             This sets the http compliance level
 
                                              * RFC7230: Disallow header folding.
                                              * RFC2616: Allow header folding.
+uriCompliance            DEFAULT             This sets the uri compliance level used by Jetty when parsing http, this can be useful when
+                                             attempting to avoid breaking changes with Jetty 10 and onward;
+                                             Possible values are set forth in the ``org.eclipse.jetty.http.UriCompliance``
+                                             enum and include:
+
+                                             * DEFAULT: The default compliance mode that extends RFC3986 compliance with
+                                               additional violations to avoid most ambiguous URIs.
+                                             * LEGACY: Compliance mode that models Jetty-9.4 behavior.
+                                             * RFC3986: Compliance mode that exactly follows RFC3986, including allowing
+                                               all additional ambiguous URI Violations.
 requestCookieCompliance  RFC6265             This sets the cookie compliance level used by Jetty when parsing request ``Cookie``
                                              headers, this can be useful when needing to support Version=1 cookies defined in
                                              RFC2109 (and continued in RFC2965) which allows for special/reserved characters
@@ -464,8 +478,8 @@ needClientAuth                   (none)                           Whether or not
 wantClientAuth                   (none)                           Whether or not client authentication is requested.
 certAlias                        (none)                           The alias of the certificate to use.
 crlPath                          (none)                           The path to the file which contains the Certificate Revocation List.
-enableCRLDP                      false                            Whether or not CRL Distribution Points (CRLDP) support is enabled.
-enableOCSP                       false                            Whether or not On-Line Certificate Status Protocol (OCSP) support is enabled.
+enableCRLDP                      false                            Whether or not CRL Distribution Points (CRLDP) support is enabled. (requires validateCerts or validatePeers)
+enableOCSP                       false                            Whether or not On-Line Certificate Status Protocol (OCSP) support is enabled. (requires validateCerts or validatePeers)
 maxCertPathLength                (unlimited)                      The maximum certification path length.
 ocspResponderUrl                 (none)                           The location of the OCSP responder.
 jceProvider                      (none)                           The name of the JCE provider to use for cryptographic support. See `Oracle documentation <https://docs.oracle.com/javase/8/docs/technotes/guides/security/SunProviders.html>`_ for more information.
@@ -494,6 +508,28 @@ disableSniHostCheck              false                            Whether to dis
 ================================ ================================ ======================================================================================
 
 .. _sslyze: https://github.com/nabla-c0d3/sslyze
+
+.. _man-configuration-unix-socket:
+
+Unix Domain Socket
+------------------
+
+Extends the attributes that are available to the :ref:`HTTP connector <man-configuration-http>` but does not require port.
+
+.. code-block:: yaml
+
+    # Extending from the default server configuration
+    server:
+      applicationConnectors:
+        - type: unix-socket
+          ...
+          path: /path/to/file
+
+================================ ================================ ======================================================================================
+Name                             Default                          Description
+================================ ================================ ======================================================================================
+path                             /tmp/dropwizard.sock             The path to the unix domain socket file.
+================================ ================================ ======================================================================================
 
 .. _man-configuration-http2:
 
@@ -1445,6 +1481,7 @@ See HttpClientConfiguration_  for more options.
       keepAlive: 0ms
       retries: 0
       userAgent: <application name> (<client name>)
+      protocolUpgradeEnabled: true
 
 
 =============================  ======================================  =============================================================================
@@ -1466,6 +1503,8 @@ retries                        0                                       The numbe
 userAgent                      ``applicationName`` (``clientName``)    The User-Agent to send with requests.
 validateAfterInactivityPeriod  0 milliseconds                          The maximum time before a persistent connection is checked to remain active.
                                                                        If set to 0, no inactivity check will be performed.
+protocolUpgradeEnabled         true                                    If set to false, ``connection: Upgrade`` and ``upgrade: TLS/1.2`` are not sent
+                                                                       anymore by the HTTP client. Might be required for Istio/Envoy.
 =============================  ======================================  =============================================================================
 
 

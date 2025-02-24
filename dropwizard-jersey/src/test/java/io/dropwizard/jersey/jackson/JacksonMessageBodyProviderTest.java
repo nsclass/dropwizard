@@ -24,19 +24,11 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 @EnabledIf("isDefaultLocaleEnglish")
@@ -62,7 +54,7 @@ public class JacksonMessageBodyProviderTest {
                 return false;
             }
             final Example other = (Example) obj;
-            return Objects.equals(this.id, other.id);
+            return this.id == other.id;
         }
     }
 
@@ -79,6 +71,7 @@ public class JacksonMessageBodyProviderTest {
     public interface Partial2 extends Default {
     }
 
+    @SuppressWarnings("MultipleNullnessAnnotations")
     public static class PartialExample {
         @Min(value = 0, groups = Partial1.class)
         @JsonProperty
@@ -182,10 +175,8 @@ public class JacksonMessageBodyProviderTest {
             entity);
 
         assertThat(obj)
-            .isInstanceOf(PartialExample.class);
-
-        assertThat(((PartialExample) obj).id)
-            .isEqualTo(1);
+            .isInstanceOfSatisfying(PartialExample.class, partialExample ->
+                assertThat(partialExample.id).isEqualTo(1));
     }
 
     @Test
@@ -205,10 +196,8 @@ public class JacksonMessageBodyProviderTest {
             entity);
 
         assertThat(obj)
-            .isInstanceOf(PartialExample.class);
-
-        assertThat(((PartialExample) obj).id)
-            .isEqualTo(1);
+            .isInstanceOfSatisfying(PartialExample.class, partialExample ->
+                assertThat(partialExample.id).isEqualTo(1));
     }
 
     @Test
@@ -281,10 +270,12 @@ public class JacksonMessageBodyProviderTest {
             entity);
 
         assertThat(obj).isInstanceOf(klass);
-        assertThat((Iterable<Example>) obj).extracting(item -> item.id).contains(1 , 2);
+        assertThat((Iterable<Example>) obj)
+            .extracting(item -> item.id)
+            .contains(1, 2);
     }
 
-    private static boolean isDefaultLocaleEnglish() {
+    static boolean isDefaultLocaleEnglish() {
         return "en".equals(Locale.getDefault().getLanguage());
     }
 }

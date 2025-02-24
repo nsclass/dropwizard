@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-parent</artifactId>
-        <version>4.0.2-SNAPSHOT</version>
+        <version>4.0.13-SNAPSHOT</version>
         <relativePath>../dropwizard-parent</relativePath>
     </parent>
 
@@ -13,6 +13,8 @@
     <name>Dropwizard Jackson Support</name>
 
     <properties>
+        <!-- https://github.com/FasterXML/jackson-modules-base/issues/37#issuecomment-389581245 -->
+        <argLine>${surefire.argLine} --illegal-access=deny --add-opens java.base/java.net=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED</argLine>
         <module.name>io.dropwizard.jackson</module.name>
     </properties>
 
@@ -113,6 +115,17 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredUnusedDeclaredDependencies>
+                        <ignoredUnusedDeclaredDependency>
+                            com.fasterxml.jackson.module:jackson-module-afterburner
+                        </ignoredUnusedDeclaredDependency>
+                    </ignoredUnusedDeclaredDependencies>
+                </configuration>
             </plugin>
         </plugins>
     </build>

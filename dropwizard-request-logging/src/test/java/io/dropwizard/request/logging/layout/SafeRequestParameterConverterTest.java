@@ -1,7 +1,7 @@
 package io.dropwizard.request.logging.layout;
 
-import ch.qos.logback.access.spi.AccessEvent;
-import ch.qos.logback.access.spi.ServerAdapter;
+import ch.qos.logback.access.common.spi.AccessEvent;
+import ch.qos.logback.access.common.spi.ServerAdapter;
 import ch.qos.logback.core.Context;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,12 +45,12 @@ class SafeRequestParameterConverterTest {
         // Jetty recycled the request
         Mockito.reset(httpServletRequest);
 
-        String value = safeRequestParameterConverter.convert(accessEvent);
-        assertThat(value).isEqualTo("Alice");
+        assertThat(safeRequestParameterConverter.convert(accessEvent))
+            .isEqualTo("Alice");
     }
 
     @Test
-    void testConvertSeveralParameters() throws Exception {
+    void testConvertSeveralParameters() {
         Mockito.when(httpServletRequest.getParameterValues("name")).thenReturn(new String[]{"Alice", "Bob"});
         Mockito.when(httpServletRequest.getParameterNames())
                 .thenReturn(Collections.enumeration(Collections.singleton("name")));
@@ -60,7 +60,7 @@ class SafeRequestParameterConverterTest {
         // Jetty recycled the request
         Mockito.reset(httpServletRequest);
 
-        final String value = safeRequestParameterConverter.convert(accessEvent);
-        assertThat(value).isEqualTo("[Alice, Bob]");
+        assertThat(safeRequestParameterConverter.convert(accessEvent))
+            .isEqualTo("[Alice, Bob]");
     }
 }

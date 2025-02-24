@@ -18,7 +18,7 @@ public @interface CacheControl {
     /**
      * If set, adds a {@code Cache-Control} header to the response which indicates the response is
      * immutable and should be kept in cache for as long as possible. (Technically, this corresponds
-     * to a {@code max-age} of one year.
+     * to a {@code max-age} of one year).
      *
      * @see #maxAge()
      * @return {@code true} if the response should be considered immutable and cached indefinitely
@@ -169,6 +169,29 @@ public @interface CacheControl {
      * @return the time unit of {@link #maxAge()}
      */
     TimeUnit maxAgeUnit() default TimeUnit.SECONDS;
+
+    /**
+     * Controls the {@code stale-while-revalidate} setting of the {@code Cache-Control} header. The unit of this
+     * amount is determined by {@link #staleWhileRevalidateUnit()}}.
+     *
+     * <p>From the HTTPbis spec:</p>
+     * <blockquote>
+     *     The stale-while-revalidate HTTP response Cache-Control extension allows servers to instruct caches to serve stale responses while validating them,
+     *     to avoid latency in some situations.
+     * </blockquote>
+     *
+     * @see #staleWhileRevalidateUnit()
+     * @return the number of {@link #staleWhileRevalidateUnit()}}s for which the response should be served while revalidating
+     *
+     */
+    int staleWhileRevalidate() default -1;
+
+    /**
+     * The time unit of {@link #staleWhileRevalidate()}.
+     *
+     * @return the time unit of {@link #staleWhileRevalidate()}
+     */
+    TimeUnit staleWhileRevalidateUnit() default TimeUnit.SECONDS;
 
     /**
      * Controls the {@code s-max-age} setting of the {@code Cache-Control} header. The unit of this

@@ -10,7 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Runs a application as an HTTP server.
+ * Runs an application as an HTTP server.
  *
  * @param <T> the {@link Configuration} subclass which is loaded from the configuration file
  */
@@ -50,6 +50,13 @@ public class ServerCommand<T extends Configuration> extends EnvironmentCommand<T
             server.addEventListener(new LifeCycleListener());
             cleanupAsynchronously();
             server.start();
+            new Thread(() -> {
+                try {
+                    server.join();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }, "dw-awaiter").start();
         } catch (Exception e) {
             LOGGER.error("Unable to start server, shutting down", e);
             try {

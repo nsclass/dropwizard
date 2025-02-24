@@ -355,9 +355,9 @@ public class HttpClientBuilder {
             final InstrumentedHttpClientConnectionManager manager,
             final String name) {
         final String cookiePolicy = configuration.isCookiesEnabled() ? StandardCookieSpec.RELAXED : StandardCookieSpec.IGNORE;
-        final Integer timeout = (int) configuration.getTimeout().toMilliseconds();
-        final Integer connectionTimeout = (int) configuration.getConnectionTimeout().toMilliseconds();
-        final Integer connectionRequestTimeout = (int) configuration.getConnectionRequestTimeout().toMilliseconds();
+        final int timeout = (int) configuration.getTimeout().toMilliseconds();
+        final int connectionTimeout = (int) configuration.getConnectionTimeout().toMilliseconds();
+        final int connectionRequestTimeout = (int) configuration.getConnectionRequestTimeout().toMilliseconds();
         final long keepAlive = configuration.getKeepAlive().toMilliseconds();
         final ConnectionReuseStrategy reuseStrategy = keepAlive == 0
                 ? ((request, response, context) -> false)
@@ -366,12 +366,15 @@ public class HttpClientBuilder {
                 ? NO_RETRIES
                 : (httpRequestRetryStrategy == null ? new DefaultHttpRequestRetryStrategy(configuration.getRetries(),
                 TimeValue.ofSeconds(1L)) : httpRequestRetryStrategy);
+        final boolean protocolUpgradeEnabled = configuration.isProtocolUpgradeEnabled();
 
         final RequestConfig requestConfig
                 = RequestConfig.custom().setCookieSpec(cookiePolicy)
                 .setResponseTimeout(timeout, TimeUnit.MILLISECONDS)
                 .setConnectTimeout(connectionTimeout, TimeUnit.MILLISECONDS)
+                .setConnectionKeepAlive(TimeValue.of(-1, TimeUnit.MILLISECONDS))
                 .setConnectionRequestTimeout(connectionRequestTimeout, TimeUnit.MILLISECONDS)
+                .setProtocolUpgradeEnabled(protocolUpgradeEnabled)
                 .build();
         final SocketConfig socketConfig = SocketConfig.custom()
                 .setTcpNoDelay(true)

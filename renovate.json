@@ -1,29 +1,58 @@
 {
   "extends": [
-    "config:base",
-    "helpers:pinGitHubActionDigests",
+    "config:best-practices",
+    ":automergeDigest",
     ":automergePatch",
     ":automergePr",
     ":automergeRequireAllStatusChecks",
+    ":enableVulnerabilityAlertsWithLabel(security)",
     ":prConcurrentLimitNone",
-    ":separatePatchReleases"
+    ":prHourlyLimitNone",
+    ":separateMultipleMajorReleases",
+    ":separatePatchReleases",
+    "group:recommended",
+    "schedule:automergeWeekly",
+    "schedule:weekly"
   ],
-  "baseBranches": ["release/2.1.x", "release/3.0.x", "release/4.0.x"],
+  "baseBranches": ["release/3.0.x", "release/4.0.x", "release/5.0.x"],
   "dependencyDashboard": true,
   "labels": ["dependencies"],
   "packageRules": [
     {
-      "matchPackagePrefixes": ["io.dropwizard.metrics"],
+      "matchPackageNames": ["io.dropwizard.metrics**"],
       "allowedVersions": "<4.3.0"
+    },
+    {
+      "matchManagers": ["bundler"],
+      "addLabels": ["ruby"]
+    },
+    {
+      "matchManagers": ["docker-compose", "dockerfile"],
+      "addLabels": ["docker"]
+    },
+    {
+      "matchManagers": ["maven", "maven-wrapper"],
+      "addLabels": ["java"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "addLabels": ["github_actions"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "addLabels": ["python"]
+    },
+    {
+      "groupName": "Maven plugins",
+      "groupSlug": "maven-plugins",
+      "matchPackageNames": ["org.apache.maven.plugins**"]
     }
   ],
   "platformAutomerge": true,
-  "reviewers": ["team:committers"],
-  "schedule": [
-    "before 2am"
-  ],
-  "vulnerabilityAlerts": {
-    "labels": ["security"],
-    "assignees": ["team:committers"]
-  }
+  "reviewers": ["team:committers"]
 }

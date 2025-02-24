@@ -61,7 +61,7 @@ public class UnitOfWorkAwareProxyFactory {
     private LoadingCache<Class<?>, Class<?>> buildCache(Caffeine<Object, Object> proxyCacheBuilder) {
         return proxyCacheBuilder.build(new CacheLoader<Class<?>, Class<?>>() {
             @Override
-            public @Nullable Class<?> load(@NonNull Class<?> key) {
+            public Class<?> load(@NonNull Class<?> key) {
                 return createProxyClass(key);
             }
         });
@@ -79,7 +79,7 @@ public class UnitOfWorkAwareProxyFactory {
     }
 
     /**
-     * Creates a new <b>@UnitOfWork</b> aware proxy of a class with an one-parameter constructor.
+     * Creates a new <b>@UnitOfWork</b> aware proxy of a class with a one-parameter constructor.
      *
      * @param clazz                the specified class definition
      * @param constructorParamType the type of the constructor parameter

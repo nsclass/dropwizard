@@ -1,6 +1,6 @@
 package io.dropwizard.request.logging.filter;
 
-import ch.qos.logback.access.spi.IAccessEvent;
+import ch.qos.logback.access.common.spi.IAccessEvent;
 import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.FilterReply;
 import io.dropwizard.jackson.DiscoverableSubtypeResolver;
@@ -33,9 +33,8 @@ class UriFilterFactoryTest {
 
         when(accessEvent.getRequestURI()).thenReturn(path);
 
-        final FilterReply reply = filter.decide(accessEvent);
-
-        assertThat(reply).isEqualTo(FilterReply.DENY);
+        assertThat(filter.decide(accessEvent))
+            .isEqualTo(FilterReply.DENY);
     }
 
     @Test
@@ -45,9 +44,8 @@ class UriFilterFactoryTest {
 
         when(accessEvent.getRequestURI()).thenReturn("/foo");
 
-        final FilterReply reply = filter.decide(accessEvent);
-
-        assertThat(reply).isEqualTo(FilterReply.NEUTRAL);
+        assertThat(filter.decide(accessEvent))
+            .isEqualTo(FilterReply.NEUTRAL);
     }
 
     @Test
@@ -61,9 +59,8 @@ class UriFilterFactoryTest {
 
         when(accessEvent.getRequestURI()).thenReturn("/sys/health");
 
-        final FilterReply reply = filter.decide(accessEvent);
-
-        assertThat(reply).isEqualTo(FilterReply.DENY);
+        assertThat(filter.decide(accessEvent))
+            .isEqualTo(FilterReply.DENY);
     }
 
     @Test

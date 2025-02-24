@@ -43,6 +43,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.setuid.RLimit;
 import org.eclipse.jetty.setuid.SetUIDListener;
 import org.eclipse.jetty.util.BlockingArrayQueue;
+import org.eclipse.jetty.util.VirtualThreads;
 import org.eclipse.jetty.util.thread.ThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,10 +52,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
 
 import static com.codahale.metrics.annotation.ResponseMeteredLevel.COARSE;
@@ -231,6 +236,13 @@ import static com.codahale.metrics.annotation.ResponseMeteredLevel.COARSE;
  *           Whether or not to dump jetty diagnostics before stop.
  *         </td>
  *     </tr>
+ *     <tr>
+ *         <td>{@code enableVirtualThreads}</td>
+ *         <td>false</td>
+ *         <td>
+ *             Whether to use virtual threads for Jetty's thread pool.
+ *         </td>
+ *     </tr>
  * </table>
  *
  * @see DefaultServerFactory
@@ -311,6 +323,8 @@ public abstract class AbstractServerFactory implements ServerFactory {
     private boolean dumpAfterStart = false;
 
     private boolean dumpBeforeStop = false;
+
+    private boolean enableVirtualThreads = false;
 
     @JsonIgnore
     @ValidationMethod(message = "must have a smaller minThreads than maxThreads")
@@ -581,6 +595,16 @@ public abstract class AbstractServerFactory implements ServerFactory {
         this.dumpBeforeStop = dumpBeforeStop;
     }
 
+    @JsonProperty
+    public boolean isEnableVirtualThreads() {
+        return enableVirtualThreads;
+    }
+
+    @JsonProperty
+    public void setEnableVirtualThreads(boolean enableVirtualThreads) {
+        this.enableVirtualThreads = enableVirtualThreads;
+    }
+
     protected Handler createAdminServlet(Server server,
                                          MutableServletContextHandler handler,
                                          MetricRegistry metrics,
@@ -643,9 +667,24 @@ public abstract class AbstractServerFactory implements ServerFactory {
         final BlockingQueue<Runnable> queue = new BlockingArrayQueue<>(minThreads, maxThreads, maxQueuedRequests);
         final InstrumentedQueuedThreadPool threadPool =
                 new InstrumentedQueuedThreadPool(metricRegistry, maxThreads, minThreads,
-                                                 (int) idleThreadTimeout.toMilliseconds(), queue);
+                    (int) idleThreadTimeout.toMilliseconds(), queue);
+        if (enableVirtualThreads) {
+            threadPool.setVirtualThreadsExecutor(getVirtualThreadsExecutorService());
+        }
         threadPool.setName("dw");
         return threadPool;
+    }
+
+    protected ExecutorService getVirtualThreadsExecutorService() {
+        try {
+            return (ExecutorService) Executors.class
+                .getDeclaredMethod("newVirtualThreadPerTaskExecutor")
+                .invoke(null);
+        } catch (InvocationTargetException invocationTargetException) {
+            throw new IllegalStateException("Error while obtaining a virtual thread executor", invocationTargetException.getCause());
+        } catch (Exception exception) {
+            throw new IllegalStateException("Error while obtaining a virtual thread executor", exception);
+        }
     }
 
     protected Server buildServer(LifecycleEnvironment lifecycle,
@@ -707,6 +746,12 @@ public abstract class AbstractServerFactory implements ServerFactory {
         return listener;
     }
 
+    /**
+     * @deprecated Jetty 12 removes the {@link RequestLogHandler}. Therefore, the signature of this method will be
+     * changed to
+     * {@code void addRequestLog(Server server, String name, MutableServletContextHandler servletContextHandler)}.
+     */
+    @Deprecated
     protected Handler addRequestLog(Server server, Handler handler, String name) {
         if (getRequestLogFactory().isEnabled()) {
             final RequestLogHandler requestLogHandler = new RequestLogHandler();
@@ -721,6 +766,12 @@ public abstract class AbstractServerFactory implements ServerFactory {
         return handler;
     }
 
+    /**
+     * @deprecated Graceful shutdown isn't performed with the {@link StatisticsHandler} in Jetty 12 anymore and metrics
+     * are collected with {@link InstrumentedHandler InstrumentedHandlers}. Will be replaced by a method with signature
+     * {@code Handler addGracefulHandler(Handler handler)}
+     */
+    @Deprecated
     protected Handler addStatsHandler(Handler handler) {
         // Graceful shutdown is implemented via the statistics handler,
         // see https://bugs.eclipse.org/bugs/show_bug.cgi?id=420142
